@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Quant Firm — the trading city that calls its own bluff</title>
+<meta name="description" content="A native macOS game about honest quantitative trading: AI agents invent strategies, a council votes, a luck gate kills flattering results, and every claim is graded against reality. Paper money. Real rigor.">
+<link rel="canonical" href="https://banbreak.github.io/quant-firm-site/">
+<meta property="og:title" content="Quant Firm — the trading city that calls its own bluff">
+<meta property="og:description" content="AI agents trade a noir city. Every promotion must beat luck itself. Paper money. Real rigor.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://banbreak.github.io/quant-firm-site/">
+<style>
+  :root {
+    --night: #06080d;
+    --abyss: #030407;
+    --glass: #0e1420;
+    --glass-edge: #1b2436;
+    --cyan: #59f7ff;
+    --cyan-dim: rgba(89, 247, 255, 0.12);
+    --amber: #ffb454;
+    --amber-dim: rgba(255, 180, 84, 0.10);
+    --alarm: #ff2438;
+    --fog: #8a93a8;
+    --paper: #e2e8f4;
+    --mono: "SF Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--night);
+    color: var(--paper);
+    font-family: var(--sans);
+    line-height: 1.65;
+    overflow-x: hidden;
+  }
+  a { color: var(--cyan); text-decoration: none; }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- reveal-on-scroll ---------- */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.lit { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    * { animation: none !important; }
+  }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; min-height: 92vh; display: flex; flex-direction: column; justify-content: center; background: var(--abyss); }
+  #city { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .hero::after { content: ""; position: absolute; inset: auto 0 0 0; height: 140px; background: linear-gradient(transparent, var(--night)); z-index: 1; pointer-events: none; }
+  .hero-inner { position: relative; z-index: 2; padding: 100px 0 80px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--amber);
+  }
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(34px, 6vw, 66px);
+    font-weight: 700;
+    line-height: 1.07;
+    text-wrap: balance;
+    margin: 20px 0 24px;
+    text-shadow: 0 0 46px rgba(89, 247, 255, 0.12);
+  }
+  h1 .dim { color: var(--fog); }
+  .sub { max-width: 58ch; color: var(--fog); font-size: 17px; }
+  .sub b { color: var(--paper); font-weight: 600; }
+  .cta-row { display: flex; gap: 14px; margin-top: 38px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    font-family: var(--mono); font-size: 14px; padding: 13px 24px;
+    border: 1px solid var(--cyan); color: var(--abyss); background: var(--cyan);
+    border-radius: 3px; cursor: pointer; display: inline-block;
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+  .btn:hover { box-shadow: 0 0 28px rgba(89, 247, 255, 0.4); transform: translateY(-1px); }
+  .btn.ghost { background: transparent; color: var(--cyan); }
+  .btn.ghost:hover { box-shadow: 0 0 22px rgba(89, 247, 255, 0.22); }
+  .tick { font-family: var(--mono); font-size: 11px; color: var(--fog); }
+
+  /* ---------- sections ---------- */
+  section { padding: 96px 0; border-top: 1px solid var(--glass-edge); }
+  .label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--fog); margin-bottom: 14px;
+  }
+  h2 {
+    font-family: var(--mono); font-size: clamp(24px, 3.4vw, 38px);
+    line-height: 1.18; text-wrap: balance; margin-bottom: 18px; font-weight: 700;
+  }
+  .lede { max-width: 62ch; color: var(--fog); font-size: 16.5px; }
+  .lede b { color: var(--paper); }
+
+  .districts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 42px; }
+  .card {
+    background: var(--glass); border: 1px solid var(--glass-edge);
+    padding: 24px 22px; border-radius: 4px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .card:hover { border-color: rgba(89, 247, 255, 0.45); box-shadow: 0 6px 30px var(--cyan-dim); transform: translateY(-2px); }
+  .card h3 { font-family: var(--mono); font-size: 15px; color: var(--cyan); margin-bottom: 8px; font-weight: 600; }
+  .card p { font-size: 14px; color: var(--fog); }
+  .card p b { color: var(--paper); font-weight: 600; }
+
+  /* ---------- how it works: the life of a strategy ---------- */
+  .pipeline { margin-top: 44px; display: grid; gap: 10px; counter-reset: stage; }
+  .stage {
+    background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 4px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .stage[open] { border-color: rgba(255, 180, 84, 0.5); box-shadow: 0 6px 30px var(--amber-dim); }
+  .stage summary {
+    list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 18px;
+    padding: 18px 22px; font-family: var(--mono);
+  }
+  .stage summary::-webkit-details-marker { display: none; }
+  .stage summary::before {
+    counter-increment: stage; content: "0" counter(stage);
+    color: var(--amber); font-size: 13px; min-width: 26px;
+  }
+  .stage summary .t { font-size: 15px; color: var(--paper); font-weight: 600; }
+  .stage summary .hint { margin-left: auto; color: var(--fog); font-size: 12px; }
+  .stage[open] summary .hint { visibility: hidden; }
+  .stage .body { padding: 0 22px 20px 66px; color: var(--fog); font-size: 14.5px; max-width: 74ch; }
+  .stage .body b { color: var(--paper); font-weight: 600; }
+  .stage .body .kill { color: var(--amber); font-family: var(--mono); font-size: 12.5px; display: block; margin-top: 10px; }
+
+  /* ---------- showcase ---------- */
+  .shots { display: grid; gap: 22px; margin-top: 44px; }
+  .shot { border: 1px solid var(--glass-edge); border-radius: 6px; overflow: hidden; background: var(--abyss); transition: border-color 0.3s ease, box-shadow 0.3s ease; }
+  .shot:hover { border-color: rgba(89, 247, 255, 0.4); box-shadow: 0 10px 44px var(--cyan-dim); }
+  .shot .bar { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--glass-edge); }
+  .shot .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--glass-edge); }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot figcaption { padding: 12px 16px; font-family: var(--mono); font-size: 12px; color: var(--fog); }
+  .shot figcaption b { color: var(--cyan); font-weight: 600; }
+
+  /* ---------- honesty ledger ---------- */
+  .ledger { margin-top: 42px; border: 1px solid var(--glass-edge); border-radius: 4px; overflow: hidden; }
+  .ledger-row { display: grid; grid-template-columns: 240px 1fr; border-top: 1px solid var(--glass-edge); }
+  .ledger-row:first-child { border-top: none; }
+  .ledger-row dt {
+    font-family: var(--mono); font-size: 13px; color: var(--amber);
+    padding: 20px; background: var(--glass); border-right: 1px solid var(--glass-edge);
+  }
+  .ledger-row dd { padding: 20px; font-size: 14.5px; color: var(--fog); }
+  .ledger-row dd b { color: var(--paper); font-weight: 600; }
+  @media (max-width: 640px) {
+    .ledger-row { grid-template-columns: 1fr; }
+    .ledger-row dt { border-right: none; border-bottom: 1px solid var(--glass-edge); padding-bottom: 10px; }
+  }
+
+  /* ---------- letter ---------- */
+  .letter {
+    max-width: 66ch; margin-top: 36px; padding: 32px 34px;
+    background: var(--glass); border: 1px solid var(--glass-edge); border-left: 3px solid var(--amber);
+    border-radius: 4px; font-size: 15.5px; color: var(--paper);
+  }
+  .letter p + p { margin-top: 14px; }
+  .letter .sig { font-family: var(--mono); color: var(--amber); font-size: 13px; margin-top: 18px; }
+
+  .fine { padding: 60px 0 90px; border-top: 1px solid var(--glass-edge); color: var(--fog); font-size: 13px; }
+  .fine .rule { color: var(--paper); font-weight: 600; }
+  .fine ul { margin: 14px 0 0 18px; display: grid; gap: 8px; }
+  .keys { font-family: var(--mono); font-size: 12px; color: var(--fog); margin-top: 28px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="city" aria-hidden="true"></canvas>
+  <div class="wrap hero-inner">
+    <div class="eyebrow">A self-improving AI trading firm · rendered as a city at night</div>
+    <h1>Twelve machines trade.<br>One city remembers.<br><span class="dim">Nothing gets to lie.</span></h1>
+    <p class="sub">
+      Quant Firm is a native macOS world where AI agents invent strategies, argue them
+      through a four-stage council, and live or die by the results — every promotion
+      statistically proven against luck, every fill paying real-world costs, every lesson
+      carved into a doctrine the next generation is born knowing. <b>Paper money. Real rigor.</b>
+    </p>
+    <div class="cta-row">
+      <a class="btn" href="#get">Get the beta</a>
+      <a class="btn ghost" href="#honesty">Why it can't fool you</a>
+      <span class="tick">BTC-USD ▲ · the Floor is open · 3 rival houses trading</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap reveal">
+    <div class="label">The city is the interface</div>
+    <h2>Every tower is an agent. Every light is a decision.</h2>
+    <p class="lede">
+      Tower height is equity. Lit windows are win rate. When crisis hits, the sky darkens,
+      rain comes down, and the War Bunker glows — a <b>Supervisor</b> convenes the firm, hears
+      every assessor's stance, and acts on a countdown unless you intervene. You can talk to any
+      agent about its book. It cannot invent numbers. Nobody in this city can.
+    </p>
+    <div class="districts">
+      <div class="card"><h3>The Inventor</h3><p>An LLM proposes genuinely novel strategies in a <b>sandboxed strategy language</b> — no arbitrary code, hard caps, every failure archived so nothing is rediscovered twice.</p></div>
+      <div class="card"><h3>The Council</h3><p>Four-stage consensus debates with a <b>Devil's Advocate whose vote-weight is earned</b> — vindicated objections make it stronger; crying wolf costs it standing.</p></div>
+      <div class="card"><h3>The Saboteur</h3><p>An adversary that <b>breeds market attacks</b> against your own champions. Strategies and attacks co-evolve; the gauntlet only gets harder.</p></div>
+      <div class="card"><h3>The Historian</h3><p>Distills every scar into a <b>living doctrine</b> injected into each new idea — and writes you an annual letter in the firm's own voice.</p></div>
+      <div class="card"><h3>The Tournament</h3><p>Three doctrine-locked rival houses trade the <b>same tape, same costs, zero learning</b>. Beat the control group or admit the machinery isn't earning.</p></div>
+      <div class="card"><h3>The Night Shift</h3><p>Opt-in overnight campaigns: the lab runs hot while you sleep and files a <b>Morning Debrief</b> of everything it tried, killed, and learned.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap reveal">
+    <div class="label">How it works</div>
+    <h2>The life of a strategy is mostly death.</h2>
+    <p class="lede">
+      Six gates stand between an idea and your book. Most ideas die. The ones that survive
+      have earned it — click any stage for what actually happens inside.
+    </p>
+    <div class="pipeline">
+      <details class="stage">
+        <summary><span class="t">Invention</span><span class="hint">expand</span></summary>
+        <div class="body">
+          A language model studies the firm's archive — its doctrine, its dead ideas, its winning
+          motifs — and proposes a new strategy as a <b>thesis plus a program</b> in a sandboxed
+          strategy language: whitelisted indicators and logic only, hard size caps, no arbitrary
+          code, ever. If the model's proposal doesn't parse, the exact error is quoted back and it
+          gets one repair attempt. Near-duplicates of archived failures are shelved on arrival.
+          <span class="kill">☠ Dies here: ideas the archive already buried.</span>
+        </div>
+      </details>
+      <details class="stage">
+        <summary><span class="t">The Gauntlet</span><span class="hint">expand</span></summary>
+        <div class="body">
+          The candidate runs walk-forward validation on <b>five years of real market history</b> —
+          scored only on out-of-sample windows it never influenced — then faces four historical
+          crises and the Saboteur's two deadliest evolved attacks. Then the luck gate: given the
+          <b>1,300+ candidates the firm has ever trialed</b>, pure chance should already have
+          produced a certain best result. The candidate must beat that benchmark with 95%
+          statistical confidence, on its own sample size, skew, and fat tails.
+          <span class="kill">☠ Dies here: most of everything. That's the point.</span>
+        </div>
+      </details>
+      <details class="stage">
+        <summary><span class="t">The Council</span><span class="hint">expand</span></summary>
+        <div class="body">
+          Survivors face a four-stage debate: analysis, adversarial review, risk assessment,
+          weighted vote. The <b>Devil's Advocate cites the full audit</b> — overfit gap, luck math,
+          stress scars — and its vote-weight is earned: objections later vindicated by the market
+          make it stronger, false alarms cost it standing. A regression gate can veto even an
+          approved promotion if it would degrade drawdown or flip the Sharpe negative.
+          <span class="kill">☠ Dies here: strategies that impress numbers but not the room.</span>
+        </div>
+      </details>
+      <details class="stage">
+        <summary><span class="t">Deployment</span><span class="hint">expand</span></summary>
+        <div class="body">
+          A deployed agent trades paper money under <b>real-world execution physics</b>: every fill
+          crosses the spread, stops gap through crashes and fill at panic prices, shorts pay live
+          funding rates pulled from real perp markets every five minutes. A meta-labeler that has
+          learned from every closed trade sizes conviction — setups it distrusts run at half size.
+          <span class="kill">☠ Bleeds here: edges that only existed before costs.</span>
+        </div>
+      </details>
+      <details class="stage">
+        <summary><span class="t">The Grading</span><span class="hint">expand</span></summary>
+        <div class="body">
+          Everything that spoke gets graded on outcomes. The Supervisor's calls, every crisis
+          voice, every data source, every rival AI's market opinion, even the gate that refused
+          trades — refusals are tracked as <b>phantom trades</b> so the refusal itself is judged.
+          Weekly, each agent's live results are compared to what its own backtest predicted for
+          the identical window; divergence raises a model-rot alarm before the equity curve confesses.
+          <span class="kill">☠ Dies here: reputations. Influence is re-earned weekly.</span>
+        </div>
+      </details>
+      <details class="stage">
+        <summary><span class="t">Memory</span><span class="hint">expand</span></summary>
+        <div class="body">
+          Every failure enters a library the Inventor must read before proposing. Every lesson the
+          Historian distills into a <b>living doctrine of at most twelve principles</b> — injected
+          into every new idea, every analyst answer. Retired legends leave blueprints that new
+          agents are bred from. The firm's memory is searchable by meaning, not just recency.
+          Nothing that died stays useless; nothing that worked is forgotten.
+          <span class="kill">☠ Nothing dies here. This is where the firm compounds.</span>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section id="shots-section" hidden>
+  <div class="wrap reveal">
+    <div class="label">The product, not a render</div>
+    <h2>Real screenshots. Real firm.</h2>
+    <div class="shots">
+      <figure class="shot" data-src="assets/city.jpg"><div class="bar"><i></i><i></i><i></i></div><img alt="The noir city view: agent towers under a night sky"><figcaption><b>The City</b> — every tower an agent, every window a win.</figcaption></figure>
+      <figure class="shot" data-src="assets/floor.jpg"><div class="bar"><i></i><i></i><i></i></div><img alt="The Floor: the firm's live channel of strategies and lessons"><figcaption><b>The Floor</b> — where agents narrate their own evolutions.</figcaption></figure>
+      <figure class="shot" data-src="assets/replay.jpg"><div class="bar"><i></i><i></i><i></i></div><img alt="Cinema mode replaying the firm's history"><figcaption><b>Cinema</b> — the firm's whole history plays itself in 45 seconds.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="honesty">
+  <div class="wrap reveal">
+    <div class="label">The part nobody else ships</div>
+    <h2>A trading game that calls its own bluff.</h2>
+    <p class="lede">
+      Every backtesting toy ever made flatters you. This one is built backwards: the machinery
+      that <b>kills</b> beautiful results is the product.
+    </p>
+    <dl class="ledger">
+      <div class="ledger-row"><dt>The Luck Gate</dt><dd>The firm counts every strategy it has ever tried. A promotion must prove — deflated-Sharpe, 95% — that it beats <b>the best result pure luck would produce across all those trials</b>. Most of what looks brilliant dies here. That's the point.</dd></div>
+      <div class="ledger-row"><dt>Real friction</dt><dd>Every fill crosses the spread. Stops gap through crashes and fill at panic prices. Shorts pay live funding pulled from real perp markets. <b>Equity curves tell the truth, especially when it hurts.</b></dd></div>
+      <div class="ledger-row"><dt>Graded everything</dt><dd>The Supervisor, the Advocate, every crisis voice, every data source, every rival AI's market calls, even the gate that refuses trades — <b>all of it is graded on outcomes</b>, earns influence, or loses it. Whale positioning and Gemini's opinions enter the same door: untrusted until proven.</dd></div>
+      <div class="ledger-row"><dt>The rot alarm</dt><dd>Weekly, each agent's live results are compared to what its own backtest predicted for the identical window. When model and market drift apart, <b>the firm says so before the equity curve confesses.</b></dd></div>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <div class="wrap reveal">
+    <div class="label">From an annual letter, written by the firm</div>
+    <h2>It speaks with its own voice.</h2>
+    <p class="lede">
+      A small language model, fine-tuned on the firm's own trading floor — running entirely
+      on your Mac — so the city sounds like itself even with no internet at all.
+    </p>
+    <div class="letter">
+      <p>To the shareholder. The record speaks plainly this year, so we will too.</p>
+      <p>Every number below survived the same gauntlet — walk-forward, the Saboteur, the luck
+      gate, real frictions. Whatever edge remains after all that is small, but it is ours,
+      and it is honest.</p>
+      <p class="sig">— The Historian</p>
+    </div>
+  </div>
+</section>
+
+<section id="get">
+  <div class="wrap reveal">
+    <div class="label">Get it</div>
+    <h2>Local-first. Your keys. Your machine.</h2>
+    <p class="lede">
+      One .app in your Dock. Everything — the database, the models' memory, your API keys —
+      stays on your Mac. Keys live in the macOS Keychain and are sent nowhere except the
+      services they belong to. Works fully offline with a local model; gets sharper with a
+      Claude key.
+    </p>
+    <div class="cta-row" style="margin-top:30px">
+      <a class="btn" href="#" onclick="alert('Beta DMG ships with the notarized build — watch this space.'); return false;">Download for macOS (beta)</a>
+      <span class="tick">Apple&nbsp;Silicon · macOS 14+ · 6.7&nbsp;MB</span>
+    </div>
+  </div>
+</section>
+
+<footer class="fine">
+  <div class="wrap">
+    <p class="rule">Read this part. The firm would.</p>
+    <ul>
+      <li><b>Paper trading only.</b> Quant Firm executes no real orders and connects to no live brokerage. The optional Alpaca mirror writes to Alpaca's paper API exclusively.</li>
+      <li><b>Not financial advice.</b> This is a research instrument and a game about intellectual honesty. Its own statistics say most edges are luck — believe them.</li>
+      <li><b>Your data is yours.</b> No accounts, no telemetry, no cloud. Delete the app and the city is gone.</li>
+    </ul>
+    <p class="keys">quant firm · a noir research machine · © 2026 Chase Thompkins</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- reveal on scroll ----
+  const io = new IntersectionObserver((es) => {
+    for (const e of es) if (e.isIntersecting) { e.target.classList.add("lit"); io.unobserve(e.target); }
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+  // ---- screenshots: light the section up only if assets exist ----
+  const shotsSection = document.getElementById("shots-section");
+  let loaded = 0;
+  document.querySelectorAll(".shot").forEach((fig) => {
+    const img = fig.querySelector("img");
+    img.onload = () => { loaded++; shotsSection.hidden = false; };
+    img.onerror = () => fig.remove();
+    img.src = fig.dataset.src;
+  });
+
+  // ---- hero: skyline, flickering windows, ambient rain, equity line ----
+  const cv = document.getElementById("city");
+  const ctx = cv.getContext("2d");
+  let W, H, towers, drops, born;
+
+  function build() {
+    W = cv.width = cv.offsetWidth * devicePixelRatio;
+    H = cv.height = cv.offsetHeight * devicePixelRatio;
+    towers = [];
+    let x = 0;
+    while (x < W) {
+      const w = (18 + Math.random() * 46) * devicePixelRatio;
+      const h = H * (0.12 + Math.random() * 0.34);
+      const windows = [];
+      for (let wy = 8; wy < h - 6; wy += 11 * devicePixelRatio) {
+        for (let wx = 4; wx < w - 6; wx += 9 * devicePixelRatio) {
+          if (Math.random() < 0.16) windows.push([wx, wy, Math.random() < 0.12, Math.random() * 7000]);
+        }
+      }
+      towers.push({ x, w, h, windows });
+      x += w + 3 * devicePixelRatio;
+    }
+    drops = Array.from({ length: 90 }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      v: (3 + Math.random() * 5) * devicePixelRatio, l: (9 + Math.random() * 15) * devicePixelRatio,
+    }));
+    born = performance.now();
+  }
+
+  function frame(ts) {
+    const p = Math.min((ts - born) / 6000, 1);
+    ctx.clearRect(0, 0, W, H);
+
+    for (const tw of towers) {
+      ctx.fillStyle = "#0b111c";
+      ctx.fillRect(tw.x, H - tw.h, tw.w, tw.h);
+      for (const [wx, wy, amber, phase] of tw.windows) {
+        // slow asynchronous flicker: each window breathes on its own clock
+        const breathe = reduced ? 1 : 0.55 + 0.45 * Math.sin((ts + phase) / 2400);
+        ctx.fillStyle = amber
+          ? `rgba(255,180,84,${0.55 * breathe})`
+          : `rgba(89,247,255,${0.30 * breathe})`;
+        ctx.fillRect(tw.x + wx, H - tw.h + wy, 3 * devicePixelRatio, 4 * devicePixelRatio);
+      }
+    }
+
+    if (!reduced) {
+      ctx.strokeStyle = "rgba(138,147,168,0.16)";
+      ctx.lineWidth = 1 * devicePixelRatio;
+      for (const d of drops) {
+        ctx.beginPath();
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x - d.v * 0.35, d.y + d.l);
+        ctx.stroke();
+        d.y += d.v; d.x -= d.v * 0.12;
+        if (d.y > H) { d.y = -d.l; d.x = Math.random() * (W + 60 * devicePixelRatio); }
+      }
+    }
+
+    // the equity line draws itself once, then holds
+    ctx.strokeStyle = "rgba(89,247,255,0.8)";
+    ctx.shadowColor = "rgba(89,247,255,0.5)";
+    ctx.shadowBlur = 7 * devicePixelRatio;
+    ctx.lineWidth = 1.6 * devicePixelRatio;
+    ctx.beginPath();
+    const n = Math.floor(220 * (reduced ? 1 : p)) + 2;
+    for (let i = 0; i < n; i++) {
+      const x = (i / 220) * W;
+      const y = H * 0.40 - (i / 220) * H * 0.15 + Math.sin(i * 0.16) * H * 0.02 + Math.sin(i * 0.043) * H * 0.045;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    if (!reduced) requestAnimationFrame(frame);
+  }
+
+  build();
+  requestAnimationFrame(frame);
+  addEventListener("resize", () => { build(); if (reduced) requestAnimationFrame(frame); });
+})();
+</script>
+</body>
+</html>
