@@ -1,15 +1,15 @@
 {
-  "version": "0.9.45",
-  "notes": "Quant Firm 0.9.45 beta",
-  "pub_date": "2026-07-28T01:29:40Z",
+  "version": "0.9.46",
+  "notes": "Quant Firm 0.9.46 beta",
+  "pub_date": "2026-07-28T02:04:47Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTelE3Q0h6YUFtZEJpUEdacGhoNFN0a1VZNjUxc0FoR01oeDJSek14eGhnTWkrK0crRFV6VTJPMzlHYTZZOWJCNUVCd3I3V0xLMVgwbjZuK0xoS0VFZ09XU1AvTURURWdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjAyMTY4CWZpbGU6UXVhbnQgRmlybS5hcHAudGFyLmd6CkM2U3FrZVlDWnNsZllTNnZLb21MSDB1c1FhdFhKNTk1c1lKeERJcXJndWIvMHhaQUJETlIwWFNnZXdrNng2VTJmekJzS2pnSmxJbDkrSTZjOWFBaEJ3PT0K",
-      "url": "https://github.com/banbreak/quant-firm-site/releases/download/v0.9.45-beta/Quant.Firm.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTelE3Q0h6YUFtZE1TSlBrdXdFaHREdGQ2NndMa2oyUGgrS3ByamtxWlVyM3dndVRUakdGcnRqUmhwNkd5L1NzbFNuME8wOXlSSTZVZ2hNZ0hCZ1RLTnYyY1NYaFA1aXdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjA0MjYzCWZpbGU6UXVhbnQgRmlybS5hcHAudGFyLmd6CmUwcnF5Si9jL3pNWnI1ODk2OHhaNmxBYWxFRXdVRmFkVytBaHpoV3g5WnBGYjdmUVZBbkRnNkQ5K3RhVGtnMGUvS1ZUSjA5WTNBK2tuZU9oUUtCZUNRPT0K",
+      "url": "https://github.com/banbreak/quant-firm-site/releases/download/v0.9.46-beta/Quant.Firm.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTelE3Q0h6YUFtZEJpUEdacGhoNFN0a1VZNjUxc0FoR01oeDJSek14eGhnTWkrK0crRFV6VTJPMzlHYTZZOWJCNUVCd3I3V0xLMVgwbjZuK0xoS0VFZ09XU1AvTURURWdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjAyMTY4CWZpbGU6UXVhbnQgRmlybS5hcHAudGFyLmd6CkM2U3FrZVlDWnNsZllTNnZLb21MSDB1c1FhdFhKNTk1c1lKeERJcXJndWIvMHhaQUJETlIwWFNnZXdrNng2VTJmekJzS2pnSmxJbDkrSTZjOWFBaEJ3PT0K",
-      "url": "https://github.com/banbreak/quant-firm-site/releases/download/v0.9.45-beta/Quant.Firm.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTelE3Q0h6YUFtZE1TSlBrdXdFaHREdGQ2NndMa2oyUGgrS3ByamtxWlVyM3dndVRUakdGcnRqUmhwNkd5L1NzbFNuME8wOXlSSTZVZ2hNZ0hCZ1RLTnYyY1NYaFA1aXdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjA0MjYzCWZpbGU6UXVhbnQgRmlybS5hcHAudGFyLmd6CmUwcnF5Si9jL3pNWnI1ODk2OHhaNmxBYWxFRXdVRmFkVytBaHpoV3g5WnBGYjdmUVZBbkRnNkQ5K3RhVGtnMGUvS1ZUSjA5WTNBK2tuZU9oUUtCZUNRPT0K",
+      "url": "https://github.com/banbreak/quant-firm-site/releases/download/v0.9.46-beta/Quant.Firm.app.tar.gz"
     }
   }
 }
