@@ -118,6 +118,32 @@ class ComfyQualityGate:
     motion_bucket_min: int = 127
     motion_bucket_max: int = 150
 
+    def __post_init__(self) -> None:
+        """Validate the gate so out-of-range params raise instead of drifting.
+
+        Spec ranges are enforced at construction (audit minor list / A5): a
+        gate object that exists is a gate object that is in range.
+        """
+        ranges: tuple[tuple[str, float, float, float], ...] = (
+            ("ip_adapter_faceid_weight", self.ip_adapter_faceid_weight, 0.65, 0.75),
+            ("pulid_weight", self.pulid_weight, 0.0, 1.0),
+            ("controlnet_pose_strength", self.controlnet_pose_strength, 0.0, 1.0),
+            ("controlnet_pose_end_step", self.controlnet_pose_end_step, 0.0, 1.0),
+            ("character_lora_weight", self.character_lora_weight, 0.70, 0.80),
+            ("style_lora_weight", self.style_lora_weight, 0.30, 0.40),
+        )
+        for name, value, lo, hi in ranges:
+            if not (lo <= value <= hi):
+                raise ValueError(f"{name}={value} outside spec range [{lo}, {hi}]")
+        if self.character_lora_weight > self.max_combined_lora_weight:
+            raise ValueError(
+                "character_lora_weight alone exceeds max_combined_lora_weight"
+            )
+        if not (0.0 <= self.wan_denoise_min <= self.wan_denoise_max <= 1.0):
+            raise ValueError("WAN denoise bounds must satisfy 0 <= min <= max <= 1")
+        if self.motion_bucket_min > self.motion_bucket_max:
+            raise ValueError("motion_bucket_min must not exceed motion_bucket_max")
+
     def effective_lora_weights(self) -> tuple[float, float]:
         """Return ``(character, style)`` LoRA weights honoring the 1.15 cap.
 

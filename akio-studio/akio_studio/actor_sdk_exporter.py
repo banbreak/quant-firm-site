@@ -27,6 +27,7 @@ import json
 import logging
 import os
 import re
+import tempfile
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -149,9 +150,15 @@ class SyntheticActorSDKExporter:
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         bundle_path = self.output_dir / f"{character_id}.synthetic_actor"
-        tmp_path = bundle_path.with_name(bundle_path.name + ".tmp")
+        # Unique temp name: a fixed ".tmp" sibling would let two concurrent
+        # exports of the same character interleave writes into one inode and
+        # install a corrupt bundle.
+        tmp_fd, tmp_name = tempfile.mkstemp(
+            dir=self.output_dir, prefix=f".{bundle_path.name}.", suffix=".tmp"
+        )
+        tmp_path = Path(tmp_name)
         try:
-            with open(tmp_path, "wb") as raw:
+            with os.fdopen(tmp_fd, "wb") as raw:
                 with zipfile.ZipFile(raw, mode="w") as archive:
                     archive.writestr(
                         _MANIFEST_NAME,

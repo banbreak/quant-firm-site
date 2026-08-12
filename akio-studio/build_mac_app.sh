@@ -15,6 +15,7 @@ DIST="$SCRIPT_DIR/dist"
 APP="$DIST/AkioStudio.app"
 CONTENTS="$APP/Contents"
 ICON_MASTER="$SCRIPT_DIR/resources/icon/AkioStudio_1024.png"
+ICON_EXPLICIT=0
 MODE="install"
 LINT_ONLY=0
 
@@ -37,7 +38,7 @@ while [ "$#" -gt 0 ]; do
     --build-only) MODE="build-only"; shift ;;
     --install) MODE="install"; shift ;;
     --icon) [ "$#" -ge 2 ] || { echo "error: --icon requires a path" >&2; exit 1; }
-            ICON_MASTER="$2"; shift 2 ;;
+            ICON_MASTER="$2"; ICON_EXPLICIT=1; shift 2 ;;
     --lint) LINT_ONLY=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "error: unknown flag: $1" >&2; usage >&2; exit 1 ;;
@@ -64,17 +65,46 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 SUPPORT="$HOME/Library/Application Support/AkioStudio"
 VENV="$SUPPORT/venv"
 LOGS="$SUPPORT/logs"
-mkdir -p "$VENV" "$LOGS"
+mkdir -p "$SUPPORT" "$LOGS"
 
 # First launch: bootstrap the orchestrator venv (stdlib + networkx only —
 # torch/ComfyUI/Ollama run in their own processes, audit B3/M1).
-if [ ! -x "$VENV/bin/python" ]; then
-  /usr/bin/env python3 -m venv "$VENV"
-  "$VENV/bin/pip" install --quiet -r "$RESOURCES/requirements.txt"
+# The sentinel is written only AFTER pip succeeds: probing bin/python would
+# treat a half-bootstrapped venv (venv ok, pip failed) as complete and
+# crash-loop every later launch on ImportError. A mkdir lock keeps two
+# overlapping first launches from interleaving writes into one venv.
+BOOTSTRAP_DONE="$VENV/.bootstrap-complete"
+BOOTSTRAP_LOCK="$SUPPORT/.bootstrap.lock"
+if [ ! -f "$BOOTSTRAP_DONE" ]; then
+  if mkdir "$BOOTSTRAP_LOCK" 2>/dev/null; then
+    trap 'rmdir "$BOOTSTRAP_LOCK" 2>/dev/null || true' EXIT
+    rm -rf "$VENV"
+    if /usr/bin/env python3 -m venv "$VENV" \
+        && "$VENV/bin/pip" install --quiet -r "$RESOURCES/requirements.txt"; then
+      touch "$BOOTSTRAP_DONE"
+    else
+      rm -rf "$VENV"
+      echo "AkioStudio: venv bootstrap failed — see $LOGS/akio-studio.log" >&2
+      exit 1
+    fi
+  else
+    # Another launch holds the lock; wait for its sentinel (up to 180 s).
+    waited=0
+    while [ ! -f "$BOOTSTRAP_DONE" ] && [ "$waited" -lt 180 ]; do
+      sleep 1; waited=$((waited + 1))
+    done
+    if [ ! -f "$BOOTSTRAP_DONE" ]; then
+      echo "AkioStudio: timed out waiting for a concurrent bootstrap" >&2
+      exit 1
+    fi
+  fi
 fi
 
 # 4. Audited runtime environment: one resident model, one request lane (A1);
 # flash attention + q8_0 KV cache to shrink the context budget (A3).
+# SCOPE: these OLLAMA_* settings only reach an `ollama serve` started by THIS
+# process tree (below). A pre-running Ollama.app or brew service keeps its own
+# environment — mirror them there (service plist / `launchctl setenv`).
 export OLLAMA_MAX_LOADED_MODELS=1
 export OLLAMA_NUM_PARALLEL=1
 export OLLAMA_FLASH_ATTENTION=1
@@ -83,6 +113,14 @@ export OLLAMA_KV_CACHE_TYPE=q8_0
 export PYTORCH_ENABLE_MPS_FALLBACK=1
 AKIO_OLLAMA_BIN="$(command -v ollama || echo /opt/homebrew/bin/ollama)"
 export AKIO_OLLAMA_BIN
+
+# Optional: start the Ollama server under the audited env when none is
+# running (opt-in — AKIO_START_OLLAMA=1 — so we never fight a user-managed
+# server for the port).
+if [ "${AKIO_START_OLLAMA:-0}" = "1" ] && [ -x "$AKIO_OLLAMA_BIN" ] \
+    && ! curl -sf --max-time 2 http://127.0.0.1:11434/api/version >/dev/null 2>&1; then
+  nohup "$AKIO_OLLAMA_BIN" serve >> "$LOGS/ollama.log" 2>&1 &
+fi
 
 # 5. Hand this process over to the orchestrator dashboard.
 exec "$VENV/bin/python" "$RESOURCES/main.py" --dashboard \
@@ -169,6 +207,11 @@ if [ -f "$ICON_MASTER" ]; then
   done
   iconutil -c icns "$ICONSET" -o "$CONTENTS/Resources/AkioStudio.icns"
   rm -rf "$ICONSET"
+elif [ "$ICON_EXPLICIT" -eq 1 ]; then
+  # An explicitly requested icon that does not exist is a build error, not a
+  # silent downgrade to an icon-less bundle.
+  echo "error: --icon $ICON_MASTER does not exist" >&2
+  exit 1
 else
   echo "warning: no icon master at $ICON_MASTER — skipping .icns (pass --icon <png>)" >&2
 fi
@@ -187,16 +230,22 @@ if [ "$MODE" = "build-only" ]; then
   exit 0
 fi
 
-if [ -w /Applications ]; then
-  TARGET="/Applications/AkioStudio.app"
-else
-  echo "==> /Applications not writable; falling back to ~/Applications"
+install_to() {
+  # rm can fail even when the directory probe passed (e.g. a pre-existing
+  # root-owned install) — treat any failure as "this target is unusable"
+  # instead of aborting mid-install under set -e.
+  local target="$1"
+  rm -rf "$target" 2>/dev/null && ditto "$APP" "$target"
+}
+
+TARGET="/Applications/AkioStudio.app"
+if [ ! -w /Applications ] || ! install_to "$TARGET"; then
+  echo "==> Cannot install to /Applications; falling back to ~/Applications"
   mkdir -p "$HOME/Applications"
   TARGET="$HOME/Applications/AkioStudio.app"
+  install_to "$TARGET"
 fi
-echo "==> Installing to $TARGET"
-rm -rf "$TARGET"
-ditto "$APP" "$TARGET"
+echo "==> Installed payload at $TARGET"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 "$LSREGISTER" -f "$TARGET" || echo "warning: lsregister re-registration failed" >&2
 touch "$TARGET"

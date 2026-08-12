@@ -40,6 +40,25 @@ RELATION_TYPES: frozenset[str] = frozenset(
 #: Relations that hold in both directions; stored once, mirrored at query time.
 SYMMETRIC_RELATIONS: frozenset[str] = frozenset({"ALLIED_WITH", "ENEMY_OF", "RIVAL_OF"})
 
+#: Attribute names that collide with networkx node-link serialization fields
+#: ("id" for nodes; "source"/"target"/"key" for edges) — they would be
+#: silently destroyed by a save/load round trip, and "key" additionally
+#: collides with the ``add_edge`` keyword. Rejected up front.
+_RESERVED_NODE_ATTRS: frozenset[str] = frozenset({"id"})
+_RESERVED_EDGE_ATTRS: frozenset[str] = frozenset({"source", "target", "key", "id"})
+
+
+def _reject_reserved_attributes(
+    subject: str, attributes: dict, reserved: frozenset[str]
+) -> None:
+    """Raise :class:`LoreGraphError` when ``attributes`` uses reserved names."""
+    clashes = reserved.intersection(attributes)
+    if clashes:
+        raise LoreGraphError(
+            f"{subject!r} uses reserved attribute name(s) {sorted(clashes)}; "
+            "these collide with the graph's persistence format"
+        )
+
 #: Every entity type the canon graph accepts.
 ENTITY_TYPES: frozenset[str] = frozenset(
     {"character", "faction", "artifact", "location", "concept"}
@@ -105,6 +124,7 @@ class LoreGraphManager:
                 f"Entity {entity_id!r} has invalid entity_type {entity_type!r}; "
                 f"expected one of {sorted(ENTITY_TYPES)}"
             )
+        _reject_reserved_attributes(entity_id, attributes, _RESERVED_NODE_ATTRS)
         existed = self._graph.has_node(entity_id)
         self._graph.add_node(entity_id, **attributes)
         logger.debug(
@@ -143,7 +163,11 @@ class LoreGraphManager:
                     f"Relation {source_id!r} -{relation_type}-> {target_id!r} "
                     f"references unknown entity {node!r}; add it first"
                 )
-        self._graph.add_edge(source_id, target_id, key=relation_type, **(attributes or {}))
+        attrs = attributes or {}
+        _reject_reserved_attributes(
+            f"{source_id}-{relation_type}->{target_id}", attrs, _RESERVED_EDGE_ATTRS
+        )
+        self._graph.add_edge(source_id, target_id, key=relation_type, **attrs)
         logger.debug("Related %r -%s-> %r", source_id, relation_type, target_id)
 
     def relations_between(self, a: str, b: str) -> list[dict]:

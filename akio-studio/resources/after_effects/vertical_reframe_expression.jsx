@@ -24,8 +24,9 @@ var master = comp("16_9_Master");
 var focal = master.layer("Focal_Point_Null");
 // Null position in MASTER-comp pixels (toComp handles parented/animated
 // nulls). Sampled at the master-comp time that corresponds to *this* comp's
-// current time — if the nested layer starts late (or is time-stretched),
-// sampling at bare `time` would read the null at the wrong moment.
+// current time: startTime offsets are compensated. NOTE: time-stretch and
+// time-remap on the nested layer are NOT compensated here — if you retime
+// the nested master, fold the same retime into masterTime below.
 var masterTime = time - thisLayer.startTime;
 var focalX = focal.toComp(focal.transform.anchorPoint, masterTime)[0];
 

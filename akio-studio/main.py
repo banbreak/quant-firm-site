@@ -9,7 +9,7 @@ and the purge step reports both servers as unreachable instead of failing.
 
 Flags:
 
-* ``--base-dir PATH``   production tree root (default ``./demo_output``)
+* ``--base-dir PATH``   production tree root (default ``~/AkioStudio/productions``)
 * ``--webhook-url URL`` optional greenlight webhook; skipped when absent
 * ``--dashboard`` / ``--daemon``  accepted aliases that currently run this
   same demo pipeline — documented placeholders for the macOS launcher built
@@ -309,11 +309,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="akio-studio",
         description="Akio Studio end-to-end demo pipeline (runs offline).",
     )
+    # Default must be user-writable and cwd-independent: Dock/launchd start
+    # processes with cwd '/', where a cwd-relative default would try to mkdir
+    # on macOS's sealed read-only system volume and crash every app launch.
     parser.add_argument(
         "--base-dir",
         type=Path,
-        default=Path.cwd() / "demo_output",
-        help="production tree root (default: ./demo_output)",
+        default=StudioConfig().base_dir,
+        help="production tree root (default: ~/AkioStudio/productions)",
     )
     parser.add_argument(
         "--webhook-url",

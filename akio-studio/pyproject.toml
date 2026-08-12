@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 dependencies = [
-    "networkx>=3.0",
+    # >=3.4: node_link_data/node_link_graph grew the explicit edges= keyword
+    # the lore graph passes.
+    "networkx>=3.4",
 ]
 
 [project.optional-dependencies]

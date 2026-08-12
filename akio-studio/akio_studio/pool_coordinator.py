@@ -44,6 +44,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from akio_studio._io import _flush_to_stable_storage
 from akio_studio.config import MASTER_FPS, MODEL_FOOTPRINTS_GIB, StudioConfig
 from akio_studio.exceptions import (
     MemoryBudgetExceededError,
@@ -195,7 +196,9 @@ class DPOFeedbackLogger:
         with open(self._log_path, "a", encoding="utf-8") as handle:
             handle.write(line + "\n")
             handle.flush()
-            os.fsync(handle.fileno())
+            # Training data must survive a crash: on Darwin plain fsync stops
+            # at the drive's write cache, so use the shared F_FULLFSYNC helper.
+            _flush_to_stable_storage(handle.fileno())
 
     def register_shot_render(
         self,
@@ -230,9 +233,17 @@ class DPOFeedbackLogger:
             comfy_params=dict(comfy_params),
         )
         key = (asset_id, prompt_hash, seed)
-        if key in self._registry:
+        previous = self._registry.get(key)
+        if previous is not None:
+            # Same conditioning + same seed is the same deterministic output:
+            # carry recorded retention/rejection forward instead of silently
+            # discarding an observation that already cost a platform upload.
+            render.mean_retention = previous.mean_retention
+            render.rejected = previous.rejected
             logger.warning(
-                "re-registering shot render %s; previous entry overwritten", key
+                "re-registering shot render %s; timing/params refreshed, "
+                "recorded retention preserved",
+                key,
             )
         self._registry[key] = render
         self._append(
@@ -345,6 +356,14 @@ class DPOFeedbackLogger:
                 continue
             if render.mean_retention is None:
                 continue
+            # A "chosen" that retained *worse* than the rejected render would
+            # invert the preference signal — require strictly better retention
+            # whenever the rejected render's own retention is known.
+            if (
+                rejected.mean_retention is not None
+                and render.mean_retention <= rejected.mean_retention
+            ):
+                continue
             if chosen is None or render.mean_retention > (chosen.mean_retention or 0.0):
                 chosen = render
 
@@ -441,48 +460,74 @@ class LocalPoolCoordinator:
         already-resident stage is a no-op.
         """
         async with self._lock:
-            footprint = stage.footprint_gib
-            usable = self._config.usable_memory_gib
-            if footprint > usable:
+            await self._acquire_locked(stage)
+
+    async def _acquire_locked(self, stage: Stage) -> None:
+        """Budget-gate and make ``stage`` resident; caller holds the lock."""
+        footprint = stage.footprint_gib
+        usable = self._config.usable_memory_gib
+        if footprint > usable:
+            raise MemoryBudgetExceededError(
+                f"stage {stage.value!r} needs ~{footprint} GiB but only "
+                f"{usable} GiB of the unified pool is usable"
+            )
+        if self._resident is not None and self._resident is not stage:
+            if not self._auto_evict:
                 raise MemoryBudgetExceededError(
-                    f"stage {stage.value!r} needs ~{footprint} GiB but only "
-                    f"{usable} GiB of the unified pool is usable"
+                    f"cannot acquire stage {stage.value!r}: stage "
+                    f"{self._resident.value!r} is resident and auto_evict "
+                    "is disabled"
                 )
-            if self._resident is not None and self._resident is not stage:
-                if not self._auto_evict:
-                    raise MemoryBudgetExceededError(
-                        f"cannot acquire stage {stage.value!r}: stage "
-                        f"{self._resident.value!r} is resident and auto_evict "
-                        "is disabled"
-                    )
-                logger.info(
-                    "auto-evicting resident stage %r for %r",
-                    self._resident.value,
-                    stage.value,
+            logger.info(
+                "auto-evicting resident stage %r for %r",
+                self._resident.value,
+                stage.value,
+            )
+            evicted = self._resident
+            released_ok = await self._release_locked(evicted)
+            if not released_ok:
+                # Acquiring anyway would overlap two heavy stages in the pool
+                # (audit A1) — refuse rather than proceed into swap thrash.
+                raise MemoryBudgetExceededError(
+                    f"cannot acquire stage {stage.value!r}: eviction of "
+                    f"{evicted.value!r} could not be verified (its engine may "
+                    "still hold the model)"
                 )
-                await self._release_locked(self._resident)
-            self._resident = stage
-            logger.info("stage %r resident (~%s GiB)", stage.value, footprint)
+        self._resident = stage
+        logger.info("stage %r resident (~%s GiB)", stage.value, footprint)
 
     @asynccontextmanager
     async def stage(self, stage: Stage) -> AsyncIterator[None]:
-        """``async with coordinator.stage(Stage.LLM):`` acquire/release scope."""
-        await self.acquire_stage(stage)
-        try:
-            yield
-        finally:
-            await self.release_stage(stage)
+        """``async with coordinator.stage(Stage.LLM):`` acquire/release scope.
+
+        The coordinator lock is held for the *entire* scope, so a concurrent
+        task cannot auto-evict this stage's engine mid-generation; concurrent
+        ``stage()`` users serialize instead.
+        """
+        async with self._lock:
+            await self._acquire_locked(stage)
+            try:
+                yield
+            finally:
+                await self._release_locked(stage)
 
     async def release_stage(self, stage: Stage) -> None:
         """Release ``stage``: purge its engine, clear residency, collect."""
         async with self._lock:
             await self._release_locked(stage)
 
-    async def _release_locked(self, stage: Stage) -> None:
-        """Purge ``stage``'s engine and clear residency; caller holds the lock."""
+    async def _release_locked(self, stage: Stage) -> bool:
+        """Purge ``stage``'s engine and clear residency; caller holds the lock.
+
+        Returns ``False`` when the engine was reachable but its unload could
+        not be verified — i.e. the memory may genuinely still be occupied.
+        An unreachable engine holds nothing and counts as released.
+        """
+        released_ok = True
         if stage is Stage.LLM:
             status, verified = await self._purge_ollama()
-            if not verified:
+            if status == "unloaded" and not verified:
+                released_ok = False
                 logger.warning(
                     "ollama unload not verified (status=%s); the model may "
                     "still be resident",
@@ -503,6 +548,7 @@ class LocalPoolCoordinator:
             )
         collected = gc.collect()
         logger.debug("released stage %r; gc collected %d objects", stage.value, collected)
+        return released_ok
 
     # ------------------------------------------------------------------ Ollama
 
@@ -583,6 +629,16 @@ class LocalPoolCoordinator:
                 _http_json, "POST", f"{cfg.host}/api/chat", payload, cfg.request_timeout_s
             )
         except OSError as exc:  # URLError is an OSError subclass (audit B6/M1)
+            # A read timeout means the server is up but the generation is
+            # slow — falling back to the CLI would spawn a DUPLICATE
+            # generation against the same busy server. Only a genuine
+            # connection failure warrants the fallback.
+            reason = getattr(exc, "reason", None)
+            if isinstance(exc, TimeoutError) or isinstance(reason, TimeoutError):
+                raise OllamaUnavailableError(
+                    f"ollama /api/chat timed out after {cfg.request_timeout_s}s "
+                    "(server reachable — not retrying via CLI)"
+                ) from exc
             logger.warning("ollama HTTP API unreachable (%s); falling back to CLI", exc)
             return await self._run_ollama_cli(prompt, system_prompt)
         if status != 200:
@@ -645,6 +701,12 @@ class LocalPoolCoordinator:
             raise OllamaUnavailableError(
                 f"ollama CLI timed out after {cfg.request_timeout_s}s"
             ) from exc
+        except asyncio.CancelledError:
+            # The awaiting task was cancelled: without this, the spawned
+            # `ollama run` (holding the ~10 GiB model) would keep running.
+            proc.kill()
+            await proc.wait()
+            raise
         if proc.returncode != 0:
             raise OllamaUnavailableError(
                 f"ollama CLI exited {proc.returncode}: "
@@ -691,19 +753,30 @@ class LocalPoolCoordinator:
             return "unreachable", False
         if not loaded:
             return "already-idle", True
-        try:
-            status, _ = await asyncio.to_thread(
-                _http_json,
-                "POST",
-                f"{cfg.host}/api/generate",
-                {"model": cfg.model, "keep_alive": 0},
-                cfg.request_timeout_s,
-            )
-            if status != 200:
-                logger.warning("ollama unload request returned HTTP %s", status)
-        except OSError as exc:
-            logger.warning("ollama HTTP unload failed (%s); trying CLI stop", exc)
-            await self._ollama_cli_stop()
+        # Unload every model the server reports, not just the configured one —
+        # a stray second model would otherwise survive the purge while the
+        # report claimed the pool was drained (audit B3/A1).
+        for model_name in loaded:
+            try:
+                status, _ = await asyncio.to_thread(
+                    _http_json,
+                    "POST",
+                    f"{cfg.host}/api/generate",
+                    {"model": model_name, "keep_alive": 0},
+                    cfg.request_timeout_s,
+                )
+                if status != 200:
+                    logger.warning(
+                        "ollama unload of %r returned HTTP %s", model_name, status
+                    )
+            except OSError as exc:
+                logger.warning(
+                    "ollama HTTP unload of %r failed (%s); trying CLI stop",
+                    model_name,
+                    exc,
+                )
+                await self._ollama_cli_stop()
+                break
         verified = False
         for attempt in range(_PURGE_VERIFY_ATTEMPTS):
             loaded = await self._ollama_ps()

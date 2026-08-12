@@ -352,9 +352,11 @@ class MetricsIngestionEngine:
         a concept whose latest upload flopped).
         """
         required = self._config.thresholds.consecutive_uploads_required
+        # post_id tie-break: identical posted_at values must not make the
+        # window boundary depend on caller list order.
         matching = sorted(
             (post for post in posts if post.concept_id == concept_id),
-            key=lambda post: post.posted_at,
+            key=lambda post: (post.posted_at, post.post_id),
         )
         if len(matching) < required:
             logger.info(
